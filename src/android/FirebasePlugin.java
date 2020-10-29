@@ -1,5 +1,6 @@
 package org.apache.cordova.firebase;
 
+
 import android.app.Activity;
 import android.app.NotificationManager;
 import android.app.NotificationChannel;
@@ -37,6 +38,16 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.common.Scopes;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.Scopes;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.analytics.FirebaseAnalytics;
@@ -123,6 +134,7 @@ public class FirebasePlugin extends CordovaPlugin {
     private static final String CRASHLYTICS_COLLECTION_ENABLED = "firebase_crashlytics_collection_enabled";
     private static final String ANALYTICS_COLLECTION_ENABLED = "firebase_analytics_collection_enabled";
     private static final String PERFORMANCE_COLLECTION_ENABLED = "firebase_performance_collection_enabled";
+    private static final String GOOGLE_GMAIL_CLIENT_ID = "google_gmail_client_id";
 
     private static boolean inBackground = true;
     private static ArrayList<Bundle> notificationStack = null;
@@ -151,7 +163,7 @@ public class FirebasePlugin extends CordovaPlugin {
         this.cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
-                    Log.d(TAG, "Starting Firebase plugin");
+                    Log.i(TAG, "Starting Firebase plugin");
 
                     if(getMetaDataFromManifest(CRASHLYTICS_COLLECTION_ENABLED)){
                         setPreference(CRASHLYTICS_COLLECTION_ENABLED, true);
@@ -182,7 +194,7 @@ public class FirebasePlugin extends CordovaPlugin {
                             extras.putString("messageType", "notification");
                             extras.putString("tap", "background");
                             notificationStack.add(extras);
-                            Log.d(TAG, "Notification message found on init: " + extras.toString());
+                            Log.i(TAG, "Notification message found on init: " + extras.toString());
                         }
                     }
                     defaultChannelId = getStringResource("default_notification_channel_id");
@@ -403,6 +415,7 @@ public class FirebasePlugin extends CordovaPlugin {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        Log.i(TAG, "Activity Result, requestCode:"+requestCode + ", resultCode:"+resultCode + ", data:"+data.toString());
         try {
             switch (requestCode) {
                 case GOOGLE_SIGN_IN:
@@ -419,10 +432,22 @@ public class FirebasePlugin extends CordovaPlugin {
                     }
                     AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
                     String id = FirebasePlugin.instance.saveAuthCredential(credential);
+                    String authCode = acct.getServerAuthCode();
+                    String idToken = acct.getIdToken();
+                    String email = acct.getEmail();
 
                     JSONObject returnResults = new JSONObject();
                     returnResults.put("instantVerification", true);
                     returnResults.put("id", id);
+                    returnResults.put("email", acct.getEmail());
+                    returnResults.put("idToken", acct.getIdToken());
+                    returnResults.put("serverAuthCode", acct.getServerAuthCode());
+                    returnResults.put("userId", acct.getId());
+                    returnResults.put("displayName", acct.getDisplayName());
+                    returnResults.put("familyName", acct.getFamilyName());
+                    returnResults.put("givenName", acct.getGivenName());
+                    returnResults.put("imageUrl", acct.getPhotoUrl());
+
                     FirebasePlugin.activityResultCallbackContext.success(returnResults);
                     break;
             }
@@ -488,7 +513,7 @@ public class FirebasePlugin extends CordovaPlugin {
             // Pass the message bundle to the receiver manager so any registered receivers can decide to handle it
             boolean wasHandled = FirebasePluginMessageReceiverManager.sendMessage(bundle);
             if (wasHandled) {
-                Log.d(TAG, "Message bundle was handled by a registered receiver");
+                Log.i(TAG, "Message bundle was handled by a registered receiver");
             }else if (callbackContext != null) {
                 JSONObject json = new JSONObject();
                 Set<String> keys = bundle.keySet();
@@ -532,7 +557,7 @@ public class FirebasePlugin extends CordovaPlugin {
             if (data != null && data.containsKey("google.message_id")) {
                 data.putString("messageType", "notification");
                 data.putString("tap", "background");
-                Log.d(TAG, "Notification message on new intent: " + data.toString());
+                Log.i(TAG, "Notification message on new intent: " + data.toString());
                 FirebasePlugin.sendMessage(data, applicationContext);
             }
         }catch (Exception e){
@@ -1385,7 +1410,7 @@ public class FirebasePlugin extends CordovaPlugin {
                             // 2 - Auto-retrieval. On some devices Google Play services can automatically
                             //     detect the incoming verification SMS and perform verificaiton without
                             //     user action.
-                            Log.d(TAG, "success: verifyPhoneNumber.onVerificationCompleted");
+                            Log.i(TAG, "success: verifyPhoneNumber.onVerificationCompleted");
 
                             String id = FirebasePlugin.instance.saveAuthCredential((AuthCredential) credential);
 
@@ -1424,7 +1449,7 @@ public class FirebasePlugin extends CordovaPlugin {
                             // The SMS verification code has been sent to the provided phone number, we
                             // now need to ask the user to enter the code and then construct a credential
                             // by combining the code with a verification ID [(in app)].
-                            Log.d(TAG, "success: verifyPhoneNumber.onCodeSent");
+                            Log.i(TAG, "success: verifyPhoneNumber.onCodeSent");
 
                             JSONObject returnResults = new JSONObject();
                             try {
@@ -1471,7 +1496,7 @@ public class FirebasePlugin extends CordovaPlugin {
 
                     FirebaseAuth.getInstance().setLanguageCode(lang);
 
-                    Log.d(TAG, "Language code setted to "+lang);
+                    Log.i(TAG, "Language code setted to "+lang);
                 } catch (Exception e) {
                     handleExceptionWithContext(e, callbackContext);
                 }
@@ -1567,6 +1592,40 @@ public class FirebasePlugin extends CordovaPlugin {
                 try {
                     String clientId = args.getString(0);
 
+                   /* GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestIdToken(clientId)
+                            .requestEmail()
+                            .build();*/
+
+                            
+
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestScopes(new Scope(Scopes.EMAIL))
+                .requestServerAuthCode("136826160471-rp5r4tucctagltp6n0vmunn8m55hp01j.apps.googleusercontent.com")
+                .requestIdToken("136826160471-rp5r4tucctagltp6n0vmunn8m55hp01j.apps.googleusercontent.com")
+                .requestEmail()
+                .build();
+        // [END configure_signin]
+
+        
+
+                    GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(FirebasePlugin.instance.cordovaActivity, gso);
+                    Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+                    FirebasePlugin.activityResultCallbackContext = callbackContext;
+                    FirebasePlugin.instance.cordovaInterface.startActivityForResult(FirebasePlugin.instance, signInIntent, GOOGLE_SIGN_IN);
+                } catch (Exception e) {
+                    handleExceptionWithContext(e, callbackContext);
+                }
+            }
+        });
+    }
+
+    /* public void authenticateUserWithGoogle(final CallbackContext callbackContext, final JSONArray args){
+        cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                try {
+                    String clientId = args.getString(0);
+
                     GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                             .requestIdToken(clientId)
                             .requestEmail()
@@ -1581,7 +1640,7 @@ public class FirebasePlugin extends CordovaPlugin {
                 }
             }
         });
-    }
+    }*/
 
     public void authenticateUserWithApple(final CallbackContext callbackContext, final JSONArray args){
         cordova.getThreadPool().execute(new Runnable() {
@@ -1856,10 +1915,10 @@ public class FirebasePlugin extends CordovaPlugin {
             String packageName = cordovaActivity.getPackageName();
 
             String name = options.optString("name", "");
-            Log.d(TAG, "Channel "+id+" - name="+name);
+            Log.i(TAG, "Channel "+id+" - name="+name);
 
             int importance = options.optInt("importance", NotificationManager.IMPORTANCE_HIGH);
-            Log.d(TAG, "Channel "+id+" - importance="+importance);
+            Log.i(TAG, "Channel "+id+" - importance="+importance);
 
             channel = new NotificationChannel(id,
                     name,
@@ -1867,28 +1926,28 @@ public class FirebasePlugin extends CordovaPlugin {
 
             // Description
             String description = options.optString("description", "");
-            Log.d(TAG, "Channel "+id+" - description="+description);
+            Log.i(TAG, "Channel "+id+" - description="+description);
             channel.setDescription(description);
 
             // Light
             boolean light = options.optBoolean("light", true);
-            Log.d(TAG, "Channel "+id+" - light="+light);
+            Log.i(TAG, "Channel "+id+" - light="+light);
             channel.enableLights(light);
 
             int lightColor = options.optInt("lightColor", -1);
             if (lightColor != -1) {
-                Log.d(TAG, "Channel "+id+" - lightColor="+lightColor);
+                Log.i(TAG, "Channel "+id+" - lightColor="+lightColor);
                 channel.setLightColor(lightColor);
             }
 
             // Visibility
             int visibility = options.optInt("visibility", NotificationCompat.VISIBILITY_PUBLIC);
-            Log.d(TAG, "Channel "+id+" - visibility="+visibility);
+            Log.i(TAG, "Channel "+id+" - visibility="+visibility);
             channel.setLockscreenVisibility(visibility);
 
             // Badge
             boolean badge = options.optBoolean("badge", true);
-            Log.d(TAG, "Channel "+id+" - badge="+badge);
+            Log.i(TAG, "Channel "+id+" - badge="+badge);
             channel.setShowBadge(badge);
 
             // Sound
@@ -1898,16 +1957,16 @@ public class FirebasePlugin extends CordovaPlugin {
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE).build();
             if ("ringtone".equals(sound)) {
                 channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), audioAttributes);
-                Log.d(TAG, "Channel "+id+" - sound=ringtone");
+                Log.i(TAG, "Channel "+id+" - sound=ringtone");
             } else if (sound != null && !sound.contentEquals("default")) {
                 Uri soundUri = Uri.parse(ContentResolver.SCHEME_ANDROID_RESOURCE + "://" + packageName + "/raw/" + sound);
                 channel.setSound(soundUri, audioAttributes);
-                Log.d(TAG, "Channel "+id+" - sound="+sound);
+                Log.i(TAG, "Channel "+id+" - sound="+sound);
             } else if (sound != "false"){
                 channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION), audioAttributes);
-                Log.d(TAG, "Channel "+id+" - sound=default");
+                Log.i(TAG, "Channel "+id+" - sound=default");
             }else{
-                Log.d(TAG, "Channel "+id+" - sound=none");
+                Log.i(TAG, "Channel "+id+" - sound=none");
             }
 
             // Vibration: if vibration setting is an array set vibration pattern, else set enable vibration.
@@ -1920,11 +1979,11 @@ public class FirebasePlugin extends CordovaPlugin {
                 }
                 channel.enableVibration(true);
                 channel.setVibrationPattern(patternArray);
-                Log.d(TAG, "Channel "+id+" - vibrate="+pattern);
+                Log.i(TAG, "Channel "+id+" - vibrate="+pattern);
             } else {
                 boolean vibrate = options.optBoolean("vibration", true);
                 channel.enableVibration(vibrate);
-                Log.d(TAG, "Channel "+id+" - vibrate="+vibrate);
+                Log.i(TAG, "Channel "+id+" - vibrate="+vibrate);
             }
 
             // Create channel
@@ -2689,10 +2748,10 @@ public class FirebasePlugin extends CordovaPlugin {
     private AuthCredential obtainAuthCredential(JSONObject jsonCredential) throws JSONException {
         AuthCredential authCredential = null;
         if(jsonCredential.has("verificationId") && jsonCredential.has("code")){
-            Log.d(TAG, "Using specified verificationId and code to authenticate");
+            Log.i(TAG, "Using specified verificationId and code to authenticate");
             authCredential = (AuthCredential) PhoneAuthProvider.getCredential(jsonCredential.getString("verificationId"), jsonCredential.getString("code"));
         }else if(jsonCredential.has("id") && FirebasePlugin.instance.authCredentials.containsKey(jsonCredential.getString("id"))){
-            Log.d(TAG, "Using native auth credential to authenticate");
+            Log.i(TAG, "Using native auth credential to authenticate");
             authCredential = FirebasePlugin.instance.authCredentials.get(jsonCredential.getString("id"));
         }
         return authCredential;
@@ -2701,7 +2760,7 @@ public class FirebasePlugin extends CordovaPlugin {
     private OAuthProvider obtainAuthProvider(JSONObject jsonCredential) throws JSONException{
         OAuthProvider authProvider = null;
         if(jsonCredential.has("id") && FirebasePlugin.instance.authProviders.containsKey(jsonCredential.getString("id"))){
-            Log.d(TAG, "Using native auth provider to authenticate");
+            Log.i(TAG, "Using native auth provider to authenticate");
             authProvider = FirebasePlugin.instance.authProviders.get(jsonCredential.getString("id"));
         }
         return authProvider;
@@ -2711,7 +2770,7 @@ public class FirebasePlugin extends CordovaPlugin {
     private static class AuthResultOnSuccessListener implements OnSuccessListener<AuthResult> {
         @Override
         public void onSuccess(AuthResult authResult) {
-            Log.d(TAG, "AuthResult:onSuccess:" + authResult);
+            Log.i(TAG, "AuthResult:onSuccess:" + authResult);
             if(FirebasePlugin.instance.authResultCallbackContext != null){
                 FirebasePlugin.instance.authResultCallbackContext.success();
             }
