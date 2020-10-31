@@ -278,8 +278,9 @@ exports.signInUserAnonymously = function (success, error) {
   exec(success, error, "FirebasePlugin", "signInUserAnonymously");
 };
 
-exports.authenticateUserWithGoogle = function (clientId, success, error) {
-    exec(success, error, "FirebasePlugin", "authenticateUserWithGoogle", [clientId]);
+exports.authenticateUserWithGoogle = function (clientId, success, error, getOfflineToken = false, requestScopes = "") {
+    if(typeof getOfflineToken !== 'boolean') return error("'getOfflineToken' must be a boolean");
+    exec(success, error, "FirebasePlugin", "authenticateUserWithGoogle", [clientId, getOfflineToken, requestScopes]);
 };
 
 exports.authenticateUserWithApple = function (success, error, locale) {

@@ -134,8 +134,7 @@ public class FirebasePlugin extends CordovaPlugin {
     private static final String CRASHLYTICS_COLLECTION_ENABLED = "firebase_crashlytics_collection_enabled";
     private static final String ANALYTICS_COLLECTION_ENABLED = "firebase_analytics_collection_enabled";
     private static final String PERFORMANCE_COLLECTION_ENABLED = "firebase_performance_collection_enabled";
-    private static final String GOOGLE_GMAIL_CLIENT_ID = "google_gmail_client_id";
-
+ 
     private static boolean inBackground = true;
     private static ArrayList<Bundle> notificationStack = null;
     private static CallbackContext notificationCallbackContext;
@@ -415,7 +414,7 @@ public class FirebasePlugin extends CordovaPlugin {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        Log.i(TAG, "Activity Result, requestCode:"+requestCode + ", resultCode:"+resultCode + ", data:"+data.toString());
+        Log.d(TAG, "Activity Result, requestCode:"+requestCode + ", resultCode:"+resultCode + ", data:"+data.toString());
         try {
             switch (requestCode) {
                 case GOOGLE_SIGN_IN:
@@ -432,21 +431,19 @@ public class FirebasePlugin extends CordovaPlugin {
                     }
                     AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
                     String id = FirebasePlugin.instance.saveAuthCredential(credential);
-                    String authCode = acct.getServerAuthCode();
-                    String idToken = acct.getIdToken();
-                    String email = acct.getEmail();
 
                     JSONObject returnResults = new JSONObject();
                     returnResults.put("instantVerification", true);
                     returnResults.put("id", id);
-                    returnResults.put("email", acct.getEmail());
-                    returnResults.put("idToken", acct.getIdToken());
-                    returnResults.put("serverAuthCode", acct.getServerAuthCode());
-                    returnResults.put("userId", acct.getId());
-                    returnResults.put("displayName", acct.getDisplayName());
-                    returnResults.put("familyName", acct.getFamilyName());
-                    returnResults.put("givenName", acct.getGivenName());
-                    returnResults.put("imageUrl", acct.getPhotoUrl());
+                    //check if serverAuthCode was requested as well as scopes and return the corresponding values
+                    if(acct.getEmail() != null && !acct.getEmail().trim().isEmpty()) { returnResults.put("email", acct.getEmail()); }
+                    if(acct.getIdToken() != null && !acct.getIdToken().trim().isEmpty()) {  returnResults.put("idToken", acct.getIdToken()); }
+                    if(acct.getServerAuthCode() != null && !acct.getServerAuthCode().trim().isEmpty()) { returnResults.put("serverAuthCode", acct.getServerAuthCode()); }
+                    if(acct.getId() != null && !acct.getId().trim().isEmpty()) { returnResults.put("userId", acct.getId()); }
+                    if(acct.getDisplayName() != null && !acct.getDisplayName().trim().isEmpty()) { returnResults.put("displayName", acct.getDisplayName()); }
+                    if(acct.getFamilyName() != null && !acct.getFamilyName().trim().isEmpty()) { returnResults.put("familyName", acct.getFamilyName());}
+                    if(acct.getGivenName() != null && !acct.getGivenName().trim().isEmpty()) {returnResults.put("givenName", acct.getGivenName()); }
+                    if(acct.getPhotoUrl() != null && !acct.getPhotoUrl().trim().isEmpty()) { returnResults.put("imageUrl", acct.getPhotoUrl()); }
 
                     FirebasePlugin.activityResultCallbackContext.success(returnResults);
                     break;
@@ -455,6 +452,7 @@ public class FirebasePlugin extends CordovaPlugin {
             handleExceptionWithContext(e, FirebasePlugin.activityResultCallbackContext);
         }
     }
+
 
     /**
      * Get a string from resources without importing the .R package
@@ -1585,30 +1583,43 @@ public class FirebasePlugin extends CordovaPlugin {
         });
     }
 
-
     public void authenticateUserWithGoogle(final CallbackContext callbackContext, final JSONArray args){
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
                 try {
                     String clientId = args.getString(0);
-
-                   /* GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    String getOfflineToken = false;
+                    String requestedScopes = "";
+                    if(args.length == 2 ){
+                        //instruction to get the serverAuthCode
+                        getOfflineToken = args.getBoolean(1);
+                    } 
+                    if(args.length == 3 ){
+                        requestedScopes = args.getString(2);
+                    }
+                    GoogleSignInOptions gso = null;
+                    if(getOfflineToken){
+                        Log.d(TAG, "Logging with Google getting offline authServerCode");
+                        gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestServerAuthCode(clientId)
                             .requestIdToken(clientId)
                             .requestEmail()
-                            .build();*/
-
-                            
-
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestScopes(new Scope(Scopes.EMAIL))
-                .requestServerAuthCode("136826160471-rp5r4tucctagltp6n0vmunn8m55hp01j.apps.googleusercontent.com")
-                .requestIdToken("136826160471-rp5r4tucctagltp6n0vmunn8m55hp01j.apps.googleusercontent.com")
-                .requestEmail()
-                .build();
-        // [END configure_signin]
-
-        
-
+                            .build();
+                    }else if(getOfflineToken && requestedScopes.trim().length() > 0){
+                        Log.d(TAG, "Logging with Google getting offline authServerCode, and getting the scopes:"+requestedScopes);
+                        gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestScopes(new Scope(requestedScopes))
+                            .requestServerAuthCode(clientId)
+                            .requestIdToken(clientId)
+                            .requestEmail()
+                            .build();
+                    }else{     
+                        Log.d(TAG, "Logging with Google");               
+                        gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestIdToken(clientId)
+                            .requestEmail()
+                            .build();
+                    }
                     GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(FirebasePlugin.instance.cordovaActivity, gso);
                     Intent signInIntent = mGoogleSignInClient.getSignInIntent();
                     FirebasePlugin.activityResultCallbackContext = callbackContext;
@@ -1619,28 +1630,7 @@ public class FirebasePlugin extends CordovaPlugin {
             }
         });
     }
-
-    /* public void authenticateUserWithGoogle(final CallbackContext callbackContext, final JSONArray args){
-        cordova.getThreadPool().execute(new Runnable() {
-            public void run() {
-                try {
-                    String clientId = args.getString(0);
-
-                    GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                            .requestIdToken(clientId)
-                            .requestEmail()
-                            .build();
-
-                    GoogleSignInClient mGoogleSignInClient = GoogleSignIn.getClient(FirebasePlugin.instance.cordovaActivity, gso);
-                    Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-                    FirebasePlugin.activityResultCallbackContext = callbackContext;
-                    FirebasePlugin.instance.cordovaInterface.startActivityForResult(FirebasePlugin.instance, signInIntent, GOOGLE_SIGN_IN);
-                } catch (Exception e) {
-                    handleExceptionWithContext(e, callbackContext);
-                }
-            }
-        });
-    }*/
+   
 
     public void authenticateUserWithApple(final CallbackContext callbackContext, final JSONArray args){
         cordova.getThreadPool().execute(new Runnable() {

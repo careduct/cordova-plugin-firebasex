@@ -202,10 +202,7 @@ module.exports = {
             googlePlist["FIREBASE_ANALYTICS_COLLECTION_ENABLED"] = (pluginVariables['FIREBASE_ANALYTICS_COLLECTION_ENABLED'] !== "false" ? "true" : "false") ;
             googlePlistModified = true;
         }
-        if(typeof pluginVariables['GOOGLE_GMAIL_CLIENT_ID'] !== 'undefined'){
-            googlePlist["GOOGLE_GMAIL_CLIENT_ID"] = pluginVariables['GOOGLE_GMAIL_CLIENT_ID'] ;
-            googlePlistModified = true;
-        }
+
         if(typeof pluginVariables['FIREBASE_PERFORMANCE_COLLECTION_ENABLED'] !== 'undefined'){
             googlePlist["FIREBASE_PERFORMANCE_COLLECTION_ENABLED"] = (pluginVariables['FIREBASE_PERFORMANCE_COLLECTION_ENABLED'] !== "false" ? "true" : "false") ;
             googlePlistModified = true;
