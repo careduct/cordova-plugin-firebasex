@@ -443,7 +443,7 @@ public class FirebasePlugin extends CordovaPlugin {
                     if(acct.getDisplayName() != null && !acct.getDisplayName().trim().isEmpty()) { returnResults.put("displayName", acct.getDisplayName()); }
                     if(acct.getFamilyName() != null && !acct.getFamilyName().trim().isEmpty()) { returnResults.put("familyName", acct.getFamilyName());}
                     if(acct.getGivenName() != null && !acct.getGivenName().trim().isEmpty()) {returnResults.put("givenName", acct.getGivenName()); }
-                    if(acct.getPhotoUrl() != null && !acct.getPhotoUrl().trim().isEmpty()) { returnResults.put("imageUrl", acct.getPhotoUrl()); }
+                    if(acct.getPhotoUrl() != null) { returnResults.put("imageUrl", acct.getPhotoUrl()); }
 
                     FirebasePlugin.activityResultCallbackContext.success(returnResults);
                     break;
@@ -1588,33 +1588,35 @@ public class FirebasePlugin extends CordovaPlugin {
             public void run() {
                 try {
                     String clientId = args.getString(0);
-                    String getOfflineToken = false;
+                    Boolean getOfflineToken = false;
                     String requestedScopes = "";
-                    if(args.length == 2 ){
+                    Log.i(TAG, "Received requet to login with Google with args:"+args.toString());
+                    if(args.length() == 2 ){
                         //instruction to get the serverAuthCode
                         getOfflineToken = args.getBoolean(1);
                     } 
-                    if(args.length == 3 ){
+                    if(args.length() == 3 ){
+                        getOfflineToken = args.getBoolean(1);
                         requestedScopes = args.getString(2);
                     }
                     GoogleSignInOptions gso = null;
-                    if(getOfflineToken){
-                        Log.d(TAG, "Logging with Google getting offline authServerCode");
-                        gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                            .requestServerAuthCode(clientId)
-                            .requestIdToken(clientId)
-                            .requestEmail()
-                            .build();
-                    }else if(getOfflineToken && requestedScopes.trim().length() > 0){
-                        Log.d(TAG, "Logging with Google getting offline authServerCode, and getting the scopes:"+requestedScopes);
+                    if(getOfflineToken && requestedScopes.trim().length() > 0){
+                        Log.i(TAG, "Logging with Google getting offline authServerCode, and getting the scopes:"+requestedScopes);
                         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                             .requestScopes(new Scope(requestedScopes))
                             .requestServerAuthCode(clientId)
                             .requestIdToken(clientId)
                             .requestEmail()
                             .build();
-                    }else{     
-                        Log.d(TAG, "Logging with Google");               
+                    }else if(getOfflineToken){
+                        Log.i(TAG, "Logging with Google getting offline authServerCode");
+                        gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                            .requestServerAuthCode(clientId)
+                            .requestIdToken(clientId)
+                            .requestEmail()
+                            .build();
+                    }else {     
+                        Log.i(TAG, "Logging with Google");               
                         gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                             .requestIdToken(clientId)
                             .requestEmail()

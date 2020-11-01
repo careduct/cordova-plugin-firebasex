@@ -279,6 +279,7 @@ exports.signInUserAnonymously = function (success, error) {
 };
 
 exports.authenticateUserWithGoogle = function (clientId, success, error, getOfflineToken = false, requestScopes = "") {
+    console.info("authenticateUserWithGoogle");
     if(typeof getOfflineToken !== 'boolean') return error("'getOfflineToken' must be a boolean");
     exec(success, error, "FirebasePlugin", "authenticateUserWithGoogle", [clientId, getOfflineToken, requestScopes]);
 };
